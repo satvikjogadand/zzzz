@@ -1,44 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>3D Rotating Globe - Zoom to India</title>
+  <meta charset="UTF-8" />
+  <title>3D Globe Zoom to India</title>
   <style>
-    body { margin: 0; overflow: hidden; background-color: black; }
-    canvas { display: block; }
+    html, body {
+      margin: 0;
+      overflow: hidden;
+      height: 100%;
+      background: black;
+    }
+    canvas {
+      display: block;
+    }
   </style>
 </head>
 <body>
-  <script src="https://unpkg.com/three@0.150.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@0.150.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://unpkg.com/three-globe@2.26.3"></script>
+  <!-- 3D Globe Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/controls/OrbitControls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three-globe@2.26.3/dist/three-globe.min.js"></script>
 
   <script>
-    // Scene Setup
+    // Setup scene
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1500);
     camera.position.z = 300;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // Globe Setup
+    // Add lights
+    scene.add(new THREE.AmbientLight(0xffffff));
+
+    // Add Globe
     const globe = new ThreeGlobe()
       .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg');
     scene.add(globe);
 
-    // Lights
-    scene.add(new THREE.AmbientLight(0xffffff));
-
     // Controls
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableZoom = true;
-    controls.enablePan = false;
     controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.5;
+    controls.autoRotateSpeed = 0.7;
+    controls.enableZoom = true;
 
-    // Animation Loop
+    // Animate
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
@@ -46,40 +53,38 @@
     }
     animate();
 
-    // Zoom to India (lat: 21, lon: 78)
+    // Camera zoom to India (21°N, 78°E)
     setTimeout(() => {
-      const lat = 21;
-      const lon = 78;
+      const lat = 21, lng = 78;
       const radius = 100;
+      const phi = (90 - lat) * Math.PI / 180;
+      const theta = (180 - lng) * Math.PI / 180;
 
-      const phi = (90 - lat) * (Math.PI / 180);
-      const theta = (lon + 180) * (Math.PI / 180);
+      const x = radius * Math.sin(phi) * Math.cos(theta);
+      const y = radius * Math.cos(phi);
+      const z = radius * Math.sin(phi) * Math.sin(theta);
 
-      const target = new THREE.Vector3(
-        radius * Math.sin(phi) * Math.cos(theta),
-        radius * Math.cos(phi),
-        radius * Math.sin(phi) * Math.sin(theta)
-      );
-
+      const end = new THREE.Vector3(x * 2.8, y * 2.8, z * 2.8);
       const start = camera.position.clone();
-      const duration = 2000;
       const startTime = performance.now();
+      const duration = 2000;
 
-      function zoomAnimation(now) {
-        const elapsed = now - startTime;
-        const t = Math.min(elapsed / duration, 1);
-
-        // Interpolate
-        camera.position.lerpVectors(start, target.clone().multiplyScalar(2.5), t);
-        camera.lookAt(globe.position);
-
-        if (t < 1) {
-          requestAnimationFrame(zoomAnimation);
-        }
+      function zoom(now) {
+        const t = Math.min((now - startTime) / duration, 1);
+        camera.position.lerpVectors(start, end, t);
+        camera.lookAt(0, 0, 0);
+        if (t < 1) requestAnimationFrame(zoom);
       }
 
-      requestAnimationFrame(zoomAnimation);
-    }, 4000); // 4-second delay before zooming in
+      requestAnimationFrame(zoom);
+    }, 4000);
+
+    // Responsive
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
   </script>
 </body>
 </html>
